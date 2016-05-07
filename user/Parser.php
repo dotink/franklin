@@ -24,7 +24,7 @@
 		/**
 		 *
 		 */
-		public function __construct($file)
+		public function load($file)
 		{
 			$this->file   = realpath($file);
 			$this->parsed = FALSE;

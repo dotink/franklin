@@ -1,15 +1,28 @@
 <?php namespace Dotink\Franklin
 {
-	require __DIR__ . '/../vendor/autoload.php';
+	const ROOT = __DIR__ . '/../';
+
+	require ROOT . 'vendor/autoload.php';
 
 	use Symfony\Component\Console\Application;
+	use Auryn\Injector;
 	use Dotenv\Dotenv;
+	use Affinity;
 
 	$app     = new Application();
-	$dotenv  = new Dotenv(__DIR__ . '/../');
+	$broker  = new Injector();
+	$dotenv  = new Dotenv(ROOT);
+	$kernel  = new Affinity\Engine(
+		new Affinity\NativeDriver(ROOT . 'config'),
+		new Affinity\NativeDriver(ROOT . 'boot')
+	);
 
 	$dotenv->load();
 
-	$app->add(new Command\Mail());
+	$kernel->start('prod', [
+		'app'    => $app,
+		'broker' => $broker
+	]);
+
 	$app->run();
 }

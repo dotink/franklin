@@ -7,7 +7,6 @@
 	use Symfony\Component\Console\Output\OutputInterface;
 	use Symfony\Component\Console\Helper\ProgressBar;
 
-	use Http\Adapter\Guzzle6\Client;
 	use Mailgun\Mailgun;
 
 	use Dotink\Franklin;
@@ -18,6 +17,19 @@
 	class Mail extends Command
 	{
 		const DEFAULT_TEXT = 'Please use an HTML capable e-mail viewer';
+
+
+		/**
+		 *
+		 */
+		public function __construct(Franklin\Parser $parser, Mailgun $mailer)
+		{
+			$this->parser = $parser;
+			$this->mailer = $mailer;
+
+			return parent::__construct();
+		}
+
 
 		/**
 		 *
@@ -65,34 +77,31 @@
 		 */
 		protected function execute(InputInterface $input, OutputInterface $output)
 		{
-			$parser = new Franklin\Parser($input->getArgument('message'));
+			$this->parser->load($input->getArgument('message'));
 
 			if ($input->getOption('test-recipients')) {
 				$list    = $input->getOption('test-recipients');
-				$subject = sprintf('TEST: %s', $parser->getSubject());
+				$subject = sprintf('TEST: %s', $this->parser->getSubject());
 			} else {
 				$list    = $input->getArgument('list');
-				$subject = $parser->getSubject();
+				$subject = $this->parser->getSubject();
 			}
 
 			$count   = 0;
 			$total   = $this->getRecipientCount($list);
 			$from    = $input->getOption('from');
-
-			$client  = new Client();
 			$tracker = new ProgressBar($output, $total);
-			$mailgun = new Mailgun(getenv('MG_API_KEY'), $client);
 
 			$output->writeln(sprintf('Sending "%s" to %d recipients', $subject, $total));
 			$tracker->start();
 
 			foreach ($this->getRecipient($list) as $recipient) {
-				$mailgun->sendMessage(getenv('MG_DOMAIN'), [
+				$this->mailer->sendMessage(getenv('MG_DOMAIN'), [
 					'from'    => $from,
 					'subject' => $subject,
 					'to'      => $recipient['email'],
-					'text'    => $parser->getPart('text', $recipient) ?: self::DEFAULT_TEXT,
-					'html'    => $parser->getPart('html', $recipient) ?: ''
+					'text'    => $this->parser->getPart('text', $recipient) ?: self::DEFAULT_TEXT,
+					'html'    => $this->parser->getPart('html', $recipient) ?: ''
 				]);
 
 				$tracker->advance();
